@@ -36,11 +36,15 @@
 
 | OPEN | PARTIAL |
 |------|---------|
-| ![Orders3](docs/screenshots/Orders3.png) | ![Orders4](docs/screenshots/Orders4.png) |
+| ![Orders3](docs/screenshots/Orders2.png) | ![Orders4](docs/screenshots/Orders3.png) |
 
 | FILLED | CANCELLED |
 |--------|-----------|
-| ![Orders5](docs/screenshots/Orders5.png) | ![Orders6](docs/screenshots/Orders6.png) |
+| ![Orders5](docs/screenshots/Orders4.png) | ![Orders6](docs/screenshots/Orders5.png) |
+
+| 多选模式 |
+|---------|
+| ![Multi Select](docs/screenshots/Orders6.png) |
 
 ---
 
