@@ -1,6 +1,6 @@
 # NebulaX-Desk
 
-**A professional Qt 6 / QML trading terminal with real-time binary protocol connectivity.**
+**基于 Qt 6 / QML 的专业交易终端，通过二进制 TCP 协议与撮合引擎实时通信。**
 
 [![Qt](https://img.shields.io/badge/Qt-6.2%2B-41CD52?logo=qt&logoColor=white)](https://www.qt.io)
 [![C++](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/cpp/17)
@@ -8,77 +8,72 @@
 
 ---
 
-## Features
+## 功能
 
-- **Real-time trading** — Binary TCP protocol to NebulaX matching engine (32B command / 48B response frames)
-- **Order management** — Place buy/sell orders, track fills, partial fills, and cancellations
-- **Market data** — Live order book with depth visualization and auto-refresh (200ms)
-- **Dark professional UI** — Trading terminal aesthetic with breathing ambient animations
-- **Frameless window** — Custom title bar with drag, snap, and resize (Windows Aero Snap support)
-- **Order persistence** — Orders survive app restart via JSON file
-- **Cross-platform** — Windows (MSYS2 MinGW) and Linux (Ubuntu 22.04+)
-
-### Screenshots
-
-*(Add screenshots here)*
+- **实时交易** — 通过二进制 TCP 协议连接 NebulaX 撮合引擎（32 字节命令 / 48 字节响应帧）
+- **订单管理** — 下单、撤单、跟踪成交和部分成交
+- **行情数据** — 实时盘口深度可视化，支持 200ms 自动刷新
+- **深色专业界面** — 交易终端风格，呼吸动画背景
+- **无边框窗口** — 自定义标题栏、拖动、吸附、缩放
+- **订单持久化** — 订单数据保存到 JSON 文件，重启不丢失
+- **跨平台** — Windows（MSYS2 MinGW）和 Linux（Ubuntu 22.04+）
 
 ---
 
-## Architecture
+## 架构
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  QML Frontend (NebulaX.Desk module)              │
+│  QML 前端 (NebulaX.Desk 模块)                    │
 │  ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐  │
-│  │Connect │ │ Order  │ │ Market │ │  Orders  │  │
-│  │  Page  │ │  Page  │ │  Page  │ │ List Page│  │
+│  │ 连接页  │ │ 下单页  │ │ 行情页  │ │ 订单列表 │  │
 │  └────────┘ └────────┘ └────────┘ └──────────┘  │
-│         ┌────────────────────────────┐          │
-│         │     OrderCard / DepthBar   │          │
-│         └────────────────────────────┘          │
+│         ┌────────────────────────────┐           │
+│         │   OrderCard / DepthBar     │           │
+│         └────────────────────────────┘           │
 ├──────────────────────────────────────────────────┤
-│  C++ Backend                                     │
+│  C++ 后端                                        │
 │  ┌──────────────────────────────────────────────┐│
 │  │  ClientWorker                                ││
-│  │  ├─ Socket abstraction (cross-platform)     ││
-│  │  ├─ Recv thread (std::thread + signals)     ││
-│  │  ├─ Pending order queue                     ││
-│  │  └─ Order persistence (JSON file)           ││
+│  │  ├─ Socket 抽象层（跨平台）                   ││
+│  │  ├─ 接收线程（std::thread + 信号）            ││
+│  │  ├─ 待确认订单队列                            ││
+│  │  └─ 订单持久化（JSON 文件）                   ││
 │  └──────────────────────────────────────────────┘│
 ├──────────────────────────────────────────────────┤
-│  Protocol Layer                                  │
+│  协议层                                          │
 │  ┌──────────────────────────────────────────────┐│
-│  │  BinaryCommand (32B) / BinaryResponse (48B) ││
-│  │  Commands: NEW · CANCEL · BOOK              ││
-│  │  Responses: OK · FILLED · TRADE · ERROR ·   ││
-│  │            CANCELLED · BOOK · CLOSE         ││
+│  │  BinaryCommand (32B) / BinaryResponse (48B)  ││
+│  │  命令: NEW · CANCEL · BOOK                   ││
+│  │  响应: OK · FILLED · TRADE · ERROR ·         ││
+│  │        CANCELLED · BOOK · CLOSE             ││
 │  └──────────────────────────────────────────────┘│
 └──────────────────────────────────────────────────┘
 ```
 
-### Key Design Decisions
+### 关键设计决策
 
-| Decision | Rationale |
-|----------|-----------|
-| **`std::thread` for recv loop** | QThread + event loop would block on blocking I/O; dedicated thread with Qt queued signals is minimal and correct |
-| **`qRegisterMetaType` for cross-thread signals** | `uint32_t`/`uint64_t` are not registered by default; without this, Qt cannot queue them across threads |
-| **Fusion style** | Only style that allows full customization of all controls (background, indicator, contentItem) |
-| **Frameless + `startSystemMove()`** | Delegates window drag to OS for smooth snapping, multi-monitor, and Wayland support |
-| **Inline QML for Theme singleton** | Avoids Qt 6.2 file-based singleton loading race; `qmlRegisterSingletonInstance` with inlined QmlObject |
-| **Pending order queue** | Server only returns `order_id` in RSP_OK without echoing side/price/qty; FIFO queue correlates sends with acks |
+| 决策 | 理由 |
+|------|------|
+| **`std::thread` 做接收循环** | QThread 事件循环会在阻塞 I/O 时卡住；独立线程 + Qt 队列信号是最小正确的方案 |
+| **`qRegisterMetaType` 注册跨线程信号类型** | `uint32_t`/`uint64_t` 默认未注册，Qt 无法在跨线程信号中队列传递 |
+| **Fusion 样式** | 唯一允许完全自定义所有控件（background、indicator、contentItem）的样式 |
+| **无边框 + `startSystemMove()`** | 将窗口拖拽委托给操作系统，实现平滑吸附、多显示器和 Wayland 支持 |
+| **内联 QML 注册 Theme 单例** | 避免 Qt 6.2 文件型单例加载的时序问题 |
+| **待确认订单队列** | 服务端 RSP_OK 只返回 order_id，不包含 side/price/qty；FIFO 队列关联发送和确认 |
 
 ---
 
-## Build
+## 构建
 
-### Prerequisites
+### 依赖
 
-| Platform | Qt 6 | Compiler | CMake |
-|----------|------|----------|-------|
-| Windows (MSYS2) | `mingw-w64-x86_64-qt6-base` + `mingw-w64-x86_64-qt6-declarative` (6.9) | MSYS2 MinGW g++ ≥ 13 | ≥ 3.22 |
-| Linux (Ubuntu 22.04) | `qt6-base-dev` + `qt6-declarative-dev` (6.2+) | g++ ≥ 11 | ≥ 3.22 |
+| 平台 | Qt 6 | 编译器 | CMake |
+|------|------|--------|-------|
+| Windows (MSYS2) | `mingw-w64-x86_64-qt6-base` + `mingw-w64-x86_64-qt6-declarative`（6.9） | MSYS2 MinGW g++ ≥ 13 | ≥ 3.22 |
+| Linux (Ubuntu 22.04) | `qt6-base-dev` + `qt6-declarative-dev`（6.2+） | g++ ≥ 11 | ≥ 3.22 |
 
-### Quick Start
+### 一键构建
 
 ```bash
 git clone https://github.com/yourusername/NebulaX-Desk.git
@@ -86,96 +81,97 @@ cd NebulaX-Desk
 bash scripts/build.sh
 ```
 
-The binary is at `build/nebulaX-desk` (or `build/nebulaX-desk.exe` on Windows).
+可执行文件位于 `build/nebulaX-desk`（Windows 为 `build/nebulaX-desk.exe`）。
 
-### Manual Build
+### 手动构建
 
 ```bash
 cmake -S . -B build -G "Unix Makefiles"
 cmake --build build
 ```
 
-### Platform Notes
+### 平台注意事项
 
-See [scripts/BUILD.md](scripts/BUILD.md) for cross-platform workarounds (MSYS2 TMP path, .bat path patch, QML cache).
-
----
-
-## Usage
-
-1. **Launch** the application
-2. **Connect** — enter server host:port (default: `192.168.1.13:2250`) on the Connection page
-3. **Place orders** — select Buy/Sell, enter price, quantity, and user ID on the Order page
-4. **View market data** — the Market page shows the order book with depth visualization
-5. **Track orders** — the Order List page shows all orders with status filtering (ALL / OPEN / PARTIAL / FILLED / CANCELLED)
-6. **Multi-select** — long-press an order card or click Select to enter multi-select mode for batch cancellation
+详见 [scripts/BUILD.md](scripts/BUILD.md) 了解跨平台相关问题（MSYS2 TMP 路径、.bat 路径补丁、QML 缓存等）。
 
 ---
 
-## Protocol
+## 使用
 
-### Command Format (32 bytes)
+1. **启动** 运行可执行文件
+2. **连接** 在连接页输入服务器地址和端口（默认 `192.168.1.13:2250`）
+3. **下单** 选择买卖方向，输入价格、数量和用户 ID
+4. **查看行情** 行情页展示盘口深度可视化
+5. **跟踪订单** 订单列表页支持按状态筛选（ALL / OPEN / PARTIAL / FILLED / CANCELLED）
+6. **批量操作** 长按订单卡片或点击 Select 进入多选模式，支持批量撤单
+
+---
+
+## 协议
+
+### 命令格式（32 字节）
 
 ```
-Offset  Size  Field       Description
-─────────────────────────────────────
-  0      1     type       CMD_NEW (0x01) / CMD_CANCEL (0x02) / CMD_BOOK (0x03)
-  1      1     side       SIDE_BUY (0x01) / SIDE_SELL (0x02) — NEW only
-  2-3    2     _pad
-  4-7    4     price      price × 100 (NEW only)
-  8-11   4     quantity   (NEW only)
- 16-23   8     user_id    (NEW, CANCEL)
- 24-31   8     order_id   (CANCEL only)
- ```
+偏移  大小  字段      说明
+────────────────────────────────────
+  0    1    type      CMD_NEW (0x01) / CMD_CANCEL (0x02) / CMD_BOOK (0x03)
+  1    1    side      SIDE_BUY (0x01) / SIDE_SELL (0x02) — 仅 NEW
+  2-3  2    _pad      填充
+  4-7  4    price     价格 × 100（仅 NEW）
+  8-11 4    quantity  数量（仅 NEW）
+ 16-23 8    user_id   用户 ID（NEW、CANCEL）
+ 24-31 8    order_id  订单 ID（仅 CANCEL）
+```
 
-### Response Format (48 bytes)
+### 响应格式（48 字节）
 
-See [include/protocol.h](include/protocol.h) for the complete definition.
+详见 [include/protocol.h](include/protocol.h)。
 
 ---
 
-## Project Structure
+## 项目结构
 
 ```
 NebulaX-Desk/
-├── CMakeLists.txt          # Build configuration
-├── docs/                   # Design documents
+├── CMakeLists.txt          # 构建配置
+├── README.md               # 本文件
+├── docs/                   # 设计文档
 │   ├── DESIGN.md
 │   └── PROMPT.md
 ├── include/
-│   └── protocol.h          # Binary protocol definitions
+│   └── protocol.h          # 二进制协议定义
 ├── qml/
-│   ├── Main.qml            # Application root (frameless window + sidebar)
+│   ├── Main.qml            # 应用根窗口（无边框 + 侧边栏）
 │   ├── components/
-│   │   ├── DepthBar.qml    # Order book depth bar with shimmer effect
-│   │   └── OrderCard.qml   # Order entry card with status + progress
+│   │   ├── DepthBar.qml    # 盘口深度条（shimmer 动画）
+│   │   └── OrderCard.qml   # 订单卡片（状态 + 进度）
 │   └── pages/
 │       ├── ConnectionPage.qml
 │       ├── MarketPage.qml
 │       ├── OrderListPage.qml
 │       └── OrderPage.qml
 ├── scripts/
-│   ├── BUILD.md            # Build instructions
-│   └── build.sh            # Build script
-├── src/
-│   ├── main.cpp            # Entry point + Theme singleton registration
-│   ├── ClientWorker.h      # Socket abstraction + ClientWorker class
-│   └── ClientWorker.cpp    # Networking + persistence implementation
+│   ├── BUILD.md            # 构建说明
+│   └── build.sh            # 构建脚本
+└── src/
+    ├── main.cpp            # 入口 + Theme 单例注册
+    ├── ClientWorker.h      # Socket 抽象层 + ClientWorker 类
+    └── ClientWorker.cpp    # 网络通信 + 持久化
 ```
 
 ---
 
-## Technology Stack
+## 技术栈
 
-- **Language**: C++17, QML (Qt Quick)
-- **UI Framework**: Qt 6.2+ (Qt Quick Controls 2 Fusion style)
-- **Build System**: CMake 3.16+ with `qt_add_qml_module`
-- **Networking**: Raw TCP sockets (Winsock2 / POSIX), abstracted via inline functions
-- **Threading**: `std::thread` for I/O, `QObject` signals for cross-thread communication
-- **Persistence**: JSON file via `QJsonDocument`
+- **语言**: C++17、QML（Qt Quick）
+- **UI 框架**: Qt 6.2+（Qt Quick Controls 2 Fusion 样式）
+- **构建系统**: CMake 3.16+（`qt_add_qml_module`）
+- **网络**: 原生 TCP Socket（Winsock2 / POSIX），通过内联函数跨平台抽象
+- **线程**: `std::thread` 处理 I/O，`QObject` 信号实现跨线程通信
+- **持久化**: JSON 文件（`QJsonDocument`）
 
 ---
 
-## License
+## 许可
 
 MIT
