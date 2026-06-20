@@ -36,5 +36,6 @@ qt_add_qml_module(nebulaX-desk
         qml/pages/MarketPage.qml
         qml/pages/OrderListPage.qml
         qml/components/OrderCard.qml
+        qml/components/DepthBar.qml
     NO_RESOURCE_TARGET_PATH
 )

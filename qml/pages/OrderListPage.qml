@@ -5,30 +5,67 @@ import NebulaX.Desk
 
 Page {
     id: root
+    background: null
 
-    property bool multiSelectMode: false
-    property var selectedIds: []
     property var orderIndex: ({})
     property var cardRefs: ({})
     property var pendingFills: ({})
+    property bool multiSelectMode: false
+    property var selectedIds: []
 
-    header: RowLayout {
-        Button {
-            text: root.multiSelectMode ? "☑ 完成" : "☐ 多选"
-            onClicked: root.multiSelectMode = !root.multiSelectMode
-        }
-        Button {
-            text: "批量撤单 (" + root.selectedIds.length + ")"
-            enabled: root.selectedIds.length > 0
-            visible: root.multiSelectMode
-            onClicked: {
-                for (var i = 0; i < root.selectedIds.length; i++)
-                    ClientWorker.sendCancel(root.selectedIds[i], 0)
-                root.multiSelectMode = false
+    header: Rectangle {
+        height: 36
+        color: "#0A0A0E"
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 8; anchors.rightMargin: 16
+            spacing: 4
+
+            Button {
+                text: root.multiSelectMode ? "☑ Done" : "☐ Select"
+                flat: true
+                font.pixelSize: Theme.fontSizeSm
+                onClicked: root.multiSelectMode = !root.multiSelectMode
+                contentItem: Label {
+                    text: root.multiSelectMode ? "☑ Done" : "☐ Select"
+                    color: Theme.textSecondary
+                    font.pixelSize: Theme.fontSizeSm
+                }
+                background: Rectangle {
+                    color: "transparent"
+                    border.color: Theme.borderLight
+                    border.width: 1; radius: Theme.radiusSm
+                }
+            }
+            Button {
+                text: "Cancel (" + root.selectedIds.length + ")"
+                enabled: root.selectedIds.length > 0
+                visible: root.multiSelectMode
+                flat: true
+                font.pixelSize: Theme.fontSizeSm
+                onClicked: {
+                    for (var i = 0; i < root.selectedIds.length; i++)
+                        ClientWorker.sendCancel(root.selectedIds[i], 0)
+                    root.multiSelectMode = false
+                }
+                contentItem: Label {
+                    text: "Cancel (" + root.selectedIds.length + ")"
+                    color: Theme.sellRed
+                    font.pixelSize: Theme.fontSizeSm
+                }
+                background: Rectangle {
+                    color: "transparent"
+                    border.color: Theme.sellRed
+                    border.width: 1; radius: Theme.radiusSm
+                }
+            }
+            Item { Layout.fillWidth: true }
+            Label {
+                text: orderModel.count + " orders"
+                font.pixelSize: Theme.fontSizeXs
+                color: Theme.textMuted
             }
         }
-        Item { Layout.fillWidth: true }
-        Label { text: "共 " + orderModel.count + " 笔"; font.pixelSize: 12; color: "#666" }
     }
 
     ListModel { id: orderModel }
@@ -36,14 +73,14 @@ Page {
     ListView {
         id: listView
         anchors.fill: parent
-        anchors.margins: 8
+        anchors.margins: Theme.spacingSm
         model: orderModel
-        spacing: 6
+        spacing: Theme.spacingXs
         clip: true
 
         delegate: Item {
-            width: listView.width - 16
-            height: 56
+            width: listView.width - 4
+            height: 52
             required property int index
 
             OrderCard {
@@ -58,19 +95,11 @@ Page {
                 status: orderModel.get(parent.index).status
                 timeStr: orderModel.get(parent.index).timeStr
 
-                multiSelectMode: root.multiSelectMode
-                checkable: {
-                    var s = orderModel.get(parent.index).status
-                    return s === "OPEN" || s === "PARTIALLY_FILLED"
-                }
-
                 onCancelRequested: function(id) {
                     var d = orderModel.get(parent.index)
                     ClientWorker.sendCancel(id, d ? d.uid : 0)
                 }
-                onLongPressed: {
-                    root.multiSelectMode = true
-                }
+                onLongPressed: { root.multiSelectMode = true }
 
                 Component.onCompleted: {
                     root.cardRefs[orderModel.get(parent.index).orderId] = cardItem
@@ -80,8 +109,9 @@ Page {
 
         Label {
             anchors.centerIn: parent
-            text: "暂无订单"
-            color: "#999"
+            text: "No orders"
+            color: Theme.textMuted
+            font.pixelSize: Theme.fontSizeMd
             visible: orderModel.count === 0
         }
     }
@@ -100,12 +130,16 @@ Page {
                 timeStr: new Date().toLocaleTimeString()
             })
             orderIndex[orderId] = orderModel.count - 1
-            // Apply fills that arrived before the ack
             var pk = pendingFills[orderId]
             if (pk) {
                 addFill(orderId, pk)
                 delete pendingFills[orderId]
             }
+            // Animate new item into view
+            var idx = orderModel.count - 1
+            Qt.callLater(function() {
+                listView.positionViewAtIndex(idx, ListView.Contain)
+            })
         }
         function onOrderFilled(orderId) { setFilled(orderId) }
         function onCancelAck(orderId) { updateStatus(orderId, "CANCELLED") }

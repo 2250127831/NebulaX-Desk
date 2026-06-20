@@ -4,54 +4,148 @@ import QtQuick.Layouts
 import NebulaX.Desk
 
 Page {
+    id: root
+    background: null
+
     ColumnLayout {
         anchors.centerIn: parent
-        spacing: 12
+        spacing: Theme.spacingLg
 
+        // Title
         Label {
-            text: "连接设置"
+            text: "NebulaX-Desk"
             font.bold: true
-            font.pixelSize: 20
+            font.pixelSize: Theme.fontSizeXxl
+            color: Theme.textPrimary
+            Layout.alignment: Qt.AlignHCenter
+        }
+        Label {
+            text: "Trading Terminal"
+            font.pixelSize: Theme.fontSizeMd
+            color: Theme.textMuted
+            Layout.alignment: Qt.AlignHCenter
         }
 
-        TextField {
-            id: hostField
-            text: "192.168.1.13"
-            placeholderText: "主机地址"
-            Layout.preferredWidth: 250
-        }
+        // Connection card
+        Frame {
+            padding: 0
+            Layout.preferredWidth: 320
+            background: Rectangle {
+                color: Theme.bgCard; radius: Theme.radiusLg
+                border.color: Theme.borderLight; border.width: 1
+            }
 
-        TextField {
-            id: portField
-            text: "2250"
-            placeholderText: "端口"
-            validator: IntValidator { bottom: 1; top: 65535 }
-            Layout.preferredWidth: 250
-        }
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: Theme.spacingXl
+                spacing: Theme.spacingMd
 
-        Item { height: 4 }
+                // Status indicator
+                RowLayout {
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: Theme.spacingSm
+                    Rectangle {
+                        width: 8; height: 8; radius: 4
+                        color: ClientWorker.connected ? Theme.buyGreen : Theme.sellRed
+                        Behavior on color { ColorAnimation { duration: Theme.animNorm } }
+                    }
+                    Label {
+                        text: ClientWorker.connected ? "Connected" : "Disconnected"
+                        color: ClientWorker.connected ? Theme.buyGreen : Theme.sellRed
+                        font.bold: true
+                        font.pixelSize: Theme.fontSizeSm
+                    }
+                }
 
-        Button {
-            text: ClientWorker.connected ? "断开" : "连接"
-            Layout.preferredWidth: 250
-            onClicked: {
-                if (ClientWorker.connected)
-                    ClientWorker.disconnect()
-                else
-                    ClientWorker.connectToHost(hostField.text, parseInt(portField.text))
+                // Host field
+                Label { text: "Host"; font.pixelSize: Theme.fontSizeXs; color: Theme.textSecondary }
+                TextField {
+                    id: hostField
+                    text: "192.168.1.13"
+                    placeholderText: "Host"
+                    Layout.fillWidth: true
+                    font.pixelSize: Theme.fontSizeMd
+                    color: Theme.textPrimary
+                    leftPadding: 12; rightPadding: 12; topPadding: 8; bottomPadding: 8
+                    placeholderTextColor: Theme.textMuted
+                    background: Rectangle {
+                        color: Theme.bgDeep; radius: Theme.radiusSm
+                        border.color: parent.activeFocus ? Theme.borderFocus : Theme.borderLight
+                        border.width: 1
+                    }
+                }
+
+                // Port field
+                Label { text: "Port"; font.pixelSize: Theme.fontSizeXs; color: Theme.textSecondary }
+                TextField {
+                    id: portField
+                    text: "2250"
+                    placeholderText: "Port"
+                    validator: IntValidator { bottom: 1; top: 65535 }
+                    Layout.fillWidth: true
+                    font.pixelSize: Theme.fontSizeMd
+                    color: Theme.textPrimary
+                    leftPadding: 12; rightPadding: 12; topPadding: 8; bottomPadding: 8
+                    placeholderTextColor: Theme.textMuted
+                    background: Rectangle {
+                        color: Theme.bgDeep; radius: Theme.radiusSm
+                        border.color: parent.activeFocus ? Theme.borderFocus : Theme.borderLight
+                        border.width: 1
+                    }
+                }
+
+                // Connect button
+                Button {
+                    text: ClientWorker.connected ? "Disconnect" : "Connect"
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.spacingSm
+                    font.bold: true; font.pixelSize: Theme.fontSizeMd
+                    onClicked: {
+                        if (ClientWorker.connected)
+                            ClientWorker.disconnect()
+                        else
+                            ClientWorker.connectToHost(hostField.text, parseInt(portField.text))
+                    }
+                    contentItem: Label {
+                        text: ClientWorker.connected ? "Disconnect" : "Connect"
+                        color: "#FFFFFF"
+                        font.bold: true; font.pixelSize: Theme.fontSizeMd
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    background: Rectangle {
+                        radius: Theme.radiusSm
+                        color: ClientWorker.connected ? Theme.sellRed : Theme.accent
+                        Behavior on color { ColorAnimation { duration: Theme.animNorm } }
+                    }
+                }
             }
         }
 
-        Item { height: 8 }
-
+        // Log
         Frame {
-            ScrollView {
-                width: 400; height: 200
-                TextArea {
-                    id: logArea
-                    readOnly: true
-                    placeholderText: "连接日志..."
-                    textFormat: TextEdit.AutoText
+            padding: 0
+            Layout.preferredWidth: 320
+            Layout.fillHeight: true
+            background: Rectangle {
+                color: Theme.bgCard; radius: Theme.radiusMd
+                border.color: Theme.borderLight; border.width: 1
+            }
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: Theme.spacingMd
+                ScrollView {
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    clip: true
+                    TextArea {
+                        id: logArea
+                        readOnly: true
+                        placeholderText: "Connection log..."
+                        color: Theme.textPrimary
+                        font.pixelSize: Theme.fontSizeSm
+                        font.family: Theme.fontMono
+                        placeholderTextColor: Theme.textMuted
+                        background: Rectangle { color: Theme.bgDeep; radius: Theme.radiusSm }
+                    }
                 }
             }
         }
@@ -61,12 +155,9 @@ Page {
         target: ClientWorker
         function onConnectedChanged() {
             if (ClientWorker.connected)
-                logArea.append("[%1] 已连接到 %2:%3"
-                    .arg(new Date().toLocaleTimeString())
-                    .arg(hostField.text)
-                    .arg(portField.text))
+                logArea.append("[" + new Date().toLocaleTimeString() + "] Connected to " + hostField.text + ":" + portField.text)
             else
-                logArea.append("[%1] 连接断开".arg(new Date().toLocaleTimeString()))
+                logArea.append("[" + new Date().toLocaleTimeString() + "] Disconnected")
         }
     }
 }
