@@ -54,7 +54,7 @@ Page {
                             var ids = []
                             for (var i = 0; i < orderModel.count; i++) {
                                 var d = orderModel.get(i); var s = d.status; var f = listPage.filterStatus
-                                if (f === "ALL" || (f === "OPEN" && (s === "OPEN" || s === "PARTIALLY_FILLED")) || (f === "PARTIAL" && s === "PARTIALLY_FILLED") || f === s) {
+                                if (f === "ALL" || (f === "OPEN" && s === "OPEN") || (f === "PARTIAL" && s === "PARTIALLY_FILLED") || f === s) {
                                     ids.push(d.orderId); var card = listPage.cardRefs[d.orderId]
                                     if (card) card.checked = true
                                 }
@@ -163,7 +163,7 @@ Page {
         delegate: Item {
             width: listView.width - 4; height: visible ? 52 : 0
             required property int index
-            visible: { var s = orderModel.get(index).status; var f = listPage.filterStatus; return f === "ALL" || (f === "OPEN" && (s === "OPEN" || s === "PARTIALLY_FILLED")) || (f === "PARTIAL" && s === "PARTIALLY_FILLED") || f === s }
+            visible: { var s = orderModel.get(index).status; var f = listPage.filterStatus; return f === "ALL" || (f === "OPEN" && s === "OPEN") || (f === "PARTIAL" && s === "PARTIALLY_FILLED") || f === s }
 
             OrderCard {
                 id: cardItem; width: parent.width; height: parent.height
