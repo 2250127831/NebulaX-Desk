@@ -196,34 +196,11 @@ Rectangle {
 
         Menu {
             id: contextMenu
-            background: Rectangle {
-                color: Theme.bgElevated; radius: Theme.radiusSm
-                border.color: Theme.borderLight; border.width: 1
-            }
+
             MenuItem {
                 text: "撤单"
-                enabled: status === "OPEN" || status === "PARTIALLY_FILLED"
+                visible: status === "OPEN" || status === "PARTIALLY_FILLED"
                 onTriggered: root.cancelRequested(orderId)
-                contentItem: Label {
-                    text: "撤单"
-                    color: enabled ? Theme.textPrimary : Theme.textMuted
-                    font.pixelSize: Theme.fontSizeSm
-                }
-                background: Rectangle {
-                    color: parent.highlighted ? Theme.bgHover : "transparent"
-                }
-            }
-            MenuItem {
-                text: "复制 ID"
-                onTriggered: {}
-                contentItem: Label {
-                    text: "复制 ID"
-                    color: Theme.textPrimary
-                    font.pixelSize: Theme.fontSizeSm
-                }
-                background: Rectangle {
-                    color: parent.highlighted ? Theme.bgHover : "transparent"
-                }
             }
         }
     }

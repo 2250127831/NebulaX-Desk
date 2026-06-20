@@ -37,20 +37,20 @@ ApplicationWindow {
         height: 40
         color: "#0C0C12"
 
+        DragHandler {
+            id: titleDrag
+            acceptedButtons: Qt.LeftButton
+            onActiveChanged: if (active) window.startSystemMove()
+            target: null
+        }
+
         MouseArea {
             anchors.fill: parent
-            anchors.rightMargin: 120  // leave window controls clickable
-            onPressed: { dragOffX = mouseX; dragOffY = mouseY }
-            onPositionChanged: {
-                if (pressedButtons & Qt.LeftButton) {
-                    window.x += mouseX - dragOffX; window.y += mouseY - dragOffY
-                }
-            }
+            acceptedButtons: Qt.LeftButton
             onDoubleClicked: {
                 window.visibility === Window.Maximized
                     ? window.showNormal() : window.showMaximized()
             }
-            property real dragOffX: 0; property real dragOffY: 0
         }
 
         RowLayout {

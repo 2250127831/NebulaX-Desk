@@ -8,14 +8,15 @@ Page {
     background: null
 
     ColumnLayout {
-        anchors.centerIn: parent
-        spacing: Theme.spacingLg
+        anchors.fill: parent
+        anchors.margins: Theme.spacingXl
+        spacing: Theme.spacingMd
 
-        // Title
+        Item { Layout.fillHeight: true }
+
         Label {
             text: "NebulaX-Desk"
-            font.bold: true
-            font.pixelSize: Theme.fontSizeXxl
+            font.bold: true; font.pixelSize: Theme.fontSizeXxl
             color: Theme.textPrimary
             Layout.alignment: Qt.AlignHCenter
         }
@@ -26,21 +27,19 @@ Page {
             Layout.alignment: Qt.AlignHCenter
         }
 
-        // Connection card
         Frame {
             padding: 0
             Layout.preferredWidth: 320
+            Layout.alignment: Qt.AlignHCenter
             background: Rectangle {
                 color: Theme.bgCard; radius: Theme.radiusLg
                 border.color: Theme.borderLight; border.width: 1
             }
-
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: Theme.spacingXl
                 spacing: Theme.spacingMd
 
-                // Status indicator
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     spacing: Theme.spacingSm
@@ -52,20 +51,15 @@ Page {
                     Label {
                         text: ClientWorker.connected ? "Connected" : "Disconnected"
                         color: ClientWorker.connected ? Theme.buyGreen : Theme.sellRed
-                        font.bold: true
-                        font.pixelSize: Theme.fontSizeSm
+                        font.bold: true; font.pixelSize: Theme.fontSizeSm
                     }
                 }
 
-                // Host field
                 Label { text: "Host"; font.pixelSize: Theme.fontSizeXs; color: Theme.textSecondary }
                 TextField {
-                    id: hostField
-                    text: "192.168.1.13"
-                    placeholderText: "Host"
+                    id: hostField; text: "192.168.1.13"; placeholderText: "Host"
                     Layout.fillWidth: true
-                    font.pixelSize: Theme.fontSizeMd
-                    color: Theme.textPrimary
+                    font.pixelSize: Theme.fontSizeMd; color: Theme.textPrimary
                     leftPadding: 12; rightPadding: 12; topPadding: 8; bottomPadding: 8
                     placeholderTextColor: Theme.textMuted
                     background: Rectangle {
@@ -75,16 +69,12 @@ Page {
                     }
                 }
 
-                // Port field
                 Label { text: "Port"; font.pixelSize: Theme.fontSizeXs; color: Theme.textSecondary }
                 TextField {
-                    id: portField
-                    text: "2250"
-                    placeholderText: "Port"
+                    id: portField; text: "2250"; placeholderText: "Port"
                     validator: IntValidator { bottom: 1; top: 65535 }
                     Layout.fillWidth: true
-                    font.pixelSize: Theme.fontSizeMd
-                    color: Theme.textPrimary
+                    font.pixelSize: Theme.fontSizeMd; color: Theme.textPrimary
                     leftPadding: 12; rightPadding: 12; topPadding: 8; bottomPadding: 8
                     placeholderTextColor: Theme.textMuted
                     background: Rectangle {
@@ -94,58 +84,53 @@ Page {
                     }
                 }
 
-                // Connect button
                 Button {
+                    id: connBtn
                     text: ClientWorker.connected ? "Disconnect" : "Connect"
-                    Layout.fillWidth: true
-                    Layout.topMargin: Theme.spacingSm
+                    Layout.fillWidth: true; Layout.topMargin: Theme.spacingSm
                     font.bold: true; font.pixelSize: Theme.fontSizeMd
                     onClicked: {
-                        if (ClientWorker.connected)
-                            ClientWorker.disconnect()
-                        else
-                            ClientWorker.connectToHost(hostField.text, parseInt(portField.text))
+                        if (ClientWorker.connected) ClientWorker.disconnect()
+                        else ClientWorker.connectToHost(hostField.text, parseInt(portField.text))
                     }
                     contentItem: Label {
                         text: ClientWorker.connected ? "Disconnect" : "Connect"
-                        color: "#FFFFFF"
-                        font.bold: true; font.pixelSize: Theme.fontSizeMd
+                        color: "#FFFFFF"; font.bold: true; font.pixelSize: Theme.fontSizeMd
                         horizontalAlignment: Text.AlignHCenter
                     }
                     background: Rectangle {
                         radius: Theme.radiusSm
-                        color: ClientWorker.connected ? Theme.sellRed : Theme.accent
-                        Behavior on color { ColorAnimation { duration: Theme.animNorm } }
+                        color: ClientWorker.connected
+                            ? (connBtn.down ? Qt.rgba(0.96,0.27,0.36,0.8) : connBtn.hovered ? Qt.rgba(0.96,0.27,0.36,0.9) : Theme.sellRed)
+                            : (connBtn.down ? Qt.rgba(0.94,0.72,0.04,0.8) : connBtn.hovered ? Qt.rgba(0.94,0.72,0.04,0.9) : Theme.accent)
+                        Behavior on color { ColorAnimation { duration: 80 } }
                     }
                 }
             }
         }
 
-        // Log
-        Frame {
-            padding: 0
+        Item { Layout.fillHeight: true }
+
+        Rectangle {
             Layout.preferredWidth: 320
-            Layout.fillHeight: true
-            background: Rectangle {
-                color: Theme.bgCard; radius: Theme.radiusMd
-                border.color: Theme.borderLight; border.width: 1
-            }
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: Theme.spacingMd
-                ScrollView {
-                    Layout.fillWidth: true; Layout.fillHeight: true
-                    clip: true
-                    TextArea {
-                        id: logArea
-                        readOnly: true
-                        placeholderText: "Connection log..."
-                        color: Theme.textPrimary
-                        font.pixelSize: Theme.fontSizeSm
-                        font.family: Theme.fontMono
-                        placeholderTextColor: Theme.textMuted
-                        background: Rectangle { color: Theme.bgDeep; radius: Theme.radiusSm }
-                    }
+            Layout.preferredHeight: 120
+            Layout.minimumHeight: 120
+            Layout.maximumHeight: 120
+            Layout.alignment: Qt.AlignHCenter
+            color: Theme.bgCard; radius: Theme.radiusMd
+            border.color: Theme.borderLight; border.width: 1
+            clip: true
+
+            ScrollView {
+                anchors.fill: parent; clip: true; background: null
+                TextArea {
+                    id: logArea
+                    readOnly: true
+                    placeholderText: "Connection log..."
+                    color: Theme.textPrimary
+                    font.pixelSize: Theme.fontSizeSm; font.family: Theme.fontMono
+                    placeholderTextColor: Theme.textMuted
+                    background: null
                 }
             }
         }

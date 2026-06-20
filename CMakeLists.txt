@@ -8,6 +8,7 @@ set(CMAKE_AUTOMOC ON)
 find_package(Qt6 REQUIRED COMPONENTS Qml Quick)
 
 qt_add_executable(nebulaX-desk
+    WIN32
     src/main.cpp
     src/ClientWorker.cpp
 )
@@ -16,14 +17,6 @@ target_include_directories(nebulaX-desk PRIVATE include)
 target_link_libraries(nebulaX-desk PRIVATE Qt6::Qml Qt6::Quick)
 if(WIN32)
     target_link_libraries(nebulaX-desk PRIVATE ws2_32)
-endif()
-
-# ── Connectivity test (runs against live server) ──
-add_executable(test-connect test/test_connect.cpp src/ClientWorker.cpp)
-target_include_directories(test-connect PRIVATE include src)
-target_link_libraries(test-connect PRIVATE Qt6::Core)
-if(WIN32)
-    target_link_libraries(test-connect PRIVATE ws2_32)
 endif()
 
 qt_add_qml_module(nebulaX-desk

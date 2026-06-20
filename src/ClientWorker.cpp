@@ -3,6 +3,12 @@
 
 #include <cstring>
 #include <QMetaType>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QCoreApplication>
+#include <QDir>
 
 ClientWorker::ClientWorker(QObject* parent)
     : QObject(parent)
@@ -16,6 +22,98 @@ ClientWorker::~ClientWorker()
 {
     disconnect();
 }
+
+// ── Order persistence ──
+
+QString ClientWorker::ordersFilePath() const
+{
+    QString dir = QCoreApplication::applicationDirPath();
+    return dir + QStringLiteral("/orders.json");
+}
+
+void ClientWorker::persistOrder(uint64_t orderId, int side, uint32_t price,
+                                 uint32_t qty, uint64_t uid,
+                                 const QString& status, const QString& timeStr)
+{
+    QFile file(ordersFilePath());
+    QJsonArray arr;
+
+    // Read existing
+    if (file.open(QIODevice::ReadOnly)) {
+        arr = QJsonDocument::fromJson(file.readAll()).array();
+        file.close();
+    }
+
+    // Append new
+    QJsonObject obj;
+    obj[QStringLiteral("orderId")] = static_cast<qint64>(orderId);
+    obj[QStringLiteral("side")] = side;
+    obj[QStringLiteral("price")] = static_cast<qint64>(price);
+    obj[QStringLiteral("qty")] = static_cast<qint64>(qty);
+    obj[QStringLiteral("uid")] = static_cast<qint64>(uid);
+    obj[QStringLiteral("status")] = status;
+    obj[QStringLiteral("timeStr")] = timeStr;
+    arr.append(obj);
+
+    // Write back
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(arr).toJson(QJsonDocument::Compact));
+        file.close();
+    }
+}
+
+void ClientWorker::loadPersistedOrders()
+{
+    QFile file(ordersFilePath());
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+
+    QJsonArray arr = QJsonDocument::fromJson(file.readAll()).array();
+    file.close();
+
+    for (const auto& val : arr) {
+        QJsonObject obj = val.toObject();
+        uint64_t orderId = static_cast<uint64_t>(obj[QStringLiteral("orderId")].toDouble());
+        int side = obj[QStringLiteral("side")].toInt();
+        uint32_t price = static_cast<uint32_t>(obj[QStringLiteral("price")].toDouble());
+        uint32_t qty = static_cast<uint32_t>(obj[QStringLiteral("qty")].toDouble());
+        uint64_t uid = static_cast<uint64_t>(obj[QStringLiteral("uid")].toDouble());
+        QString status = obj[QStringLiteral("status")].toString();
+        QString timeStr = obj[QStringLiteral("timeStr")].toString();
+        emit orderLoaded(orderId, side, price, qty, uid, status, timeStr);
+    }
+}
+
+void ClientWorker::clearPersistedOrders()
+{
+    QFile::remove(ordersFilePath());
+}
+
+void ClientWorker::updateOrderStatus(uint64_t orderId, const QString& status)
+{
+    QFile file(ordersFilePath());
+    if (!file.open(QIODevice::ReadWrite))
+        return;
+
+    QByteArray data = file.readAll();
+    QJsonArray arr = QJsonDocument::fromJson(data).array();
+    file.resize(0);
+
+    for (int i = 0; i < arr.size(); ++i) {
+        QJsonObject obj = arr[i].toObject();
+        uint64_t id = static_cast<uint64_t>(obj[QStringLiteral("orderId")].toDouble());
+        if (id == orderId) {
+            obj[QStringLiteral("status")] = status;
+            arr[i] = obj;
+            break;
+        }
+    }
+
+    file.write(QJsonDocument(arr).toJson(QJsonDocument::Compact));
+    file.close();
+}
+
+// ── Connection ──
 
 bool ClientWorker::connectToHost(const QString& host, int port)
 {
@@ -40,12 +138,10 @@ bool ClientWorker::connectToHost(const QString& host, int port)
         return false;
     }
 
-    // SO_KEEPALIVE
     int optval = 1;
     net_setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval));
 
 #ifdef Q_OS_WIN
-    // Windows: Vista+ keepalive via WSAIoctl
     tcp_keepalive ka{};
     ka.onoff = 1;
     ka.keepalivetime = 5000;
@@ -55,16 +151,13 @@ bool ClientWorker::connectToHost(const QString& host, int port)
              nullptr, 0, &bytes, nullptr, nullptr);
 #else
     {
-        int idle = 5;
-        int interval = 1;
-        int count = 3;
+        int idle = 5, interval = 1, count = 3;
         net_setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
         net_setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(interval));
         net_setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &count, sizeof(count));
     }
 #endif
 
-    // Receive timeout 5s
     net_set_rcvtimeo(fd, 5);
 
     fd_.store(fd, std::memory_order_release);
@@ -84,6 +177,7 @@ void ClientWorker::disconnect()
         return;
 
     running_ = false;
+    net_shutdown(fd);
     closeSocket(fd);
 
     if (recvThread_.joinable())
@@ -97,6 +191,8 @@ void ClientWorker::disconnect()
 
     emit connectedChanged();
 }
+
+// ── Send helpers ──
 
 void ClientWorker::sendNewOrder(int side, uint32_t price, uint32_t qty, uint64_t uid)
 {
@@ -148,6 +244,8 @@ void ClientWorker::sendBookQuery()
         disconnect();
 }
 
+// ── Recv loop (runs in std::thread) ──
+
 void ClientWorker::recvLoop()
 {
     BinaryResponse rsp{};
@@ -181,7 +279,6 @@ void ClientWorker::recvLoop()
             break;
         }
         case RSP_FILLED: {
-            // Immediate fill: no RSP_OK preceded, pop pending for order details
             PendingOrder po{};
             bool hadPending = false;
             {
