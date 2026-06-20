@@ -165,7 +165,6 @@ NebulaX-Desk/
 ├── README.md               # 本文件
 ├── docs/                   # 设计文档
 │   ├── DESIGN.md
-│   └── PROMPT.md
 ├── include/
 │   └── protocol.h          # 二进制协议定义
 ├── qml/
